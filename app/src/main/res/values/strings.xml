@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Contrary Phone VPS</string>
+    <string name="notification_channel_name">Bot Service</string>
+    <string name="notification_channel_desc">Shows while bots are running</string>
+</resources>

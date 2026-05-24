@@ -1,0 +1,18 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#0F172A"
+        android:pathData="M0,0 L108,0 L108,108 L0,108 Z"/>
+    <!-- Subtle purple corner accents -->
+    <path
+        android:fillColor="#7C3AED"
+        android:pathData="M0,0 L20,0 L0,20 Z"
+        android:fillAlpha="0.3"/>
+    <path
+        android:fillColor="#7C3AED"
+        android:pathData="M108,0 L88,0 L108,20 Z"
+        android:fillAlpha="0.3"/>
+</vector>

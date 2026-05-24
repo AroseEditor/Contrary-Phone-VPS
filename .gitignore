@@ -1,0 +1,68 @@
+# Add local.properties
+local.properties
+
+# Gradle build outputs
+.gradle/
+build/
+app/build/
+
+# Android Studio
+.idea/
+*.iml
+*.iws
+*.ipr
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/
+
+# Keystore files — never commit
+*.jks
+*.keystore
+keystore.properties
+
+# Generated APKs / AABs
+*.apk
+*.aab
+*.aar
+
+# Proguard
+app/proguard/
+app/src/main/java/com/*/BuildConfig.java
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+eggs/
+.eggs/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# Node (for scripts)
+node_modules/
+npm-debug.log
+
+# OS
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Secrets / env
+.env
+.env.local
+secrets.properties
+
+# Chaquopy generated
+app/src/main/assets/python/

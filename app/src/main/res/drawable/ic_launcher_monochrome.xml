@@ -1,0 +1,13 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Monochrome version of the > _ icon for themed icons -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M28,40 L42,54 L28,68 L34,68 L48,54 L34,40 Z"/>
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M52,65 L80,65 L80,69 L52,69 Z"/>
+</vector>
