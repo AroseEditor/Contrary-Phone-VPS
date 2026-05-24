@@ -1,8 +1,12 @@
 <resources>
-    <style name="Theme.ContraryPhoneVPS" parent="android:Theme.Material.NoTitleBar">
+    <!-- Splash / launch theme — Compose apps need a minimal framework theme.
+         android:Theme.Material.Light.NoActionBar is always available from API 21+
+         and is the standard parent for Compose apps. -->
+    <style name="Theme.ContraryPhoneVPS" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:windowBackground">@android:color/black</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
     </style>
 </resources>
