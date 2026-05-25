@@ -101,6 +101,14 @@ android {
     }
 }
 
+// KSP configuration — required for Hilt + Room to resolve types correctly
+ksp {
+    arg("correctErrorTypes", "true")
+    arg("room.schemaLocation", "$projectDir/schemas")
+    arg("room.incremental", "true")
+    arg("room.expandProjection", "true")
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
