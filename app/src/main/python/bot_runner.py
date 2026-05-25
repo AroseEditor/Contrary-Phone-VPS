@@ -26,6 +26,19 @@ import asyncio
 import threading
 import traceback
 
+# ── Dynamic Site-Packages Bootstrap ──────────────────────────────────────────
+try:
+    from com.chaquo.python import Python
+    context = Python.getInstance().getPlatform().getApplication()
+    files_dir = context.getFilesDir().getAbsolutePath()
+    site_packages = os.path.join(files_dir, "site-packages")
+    if not os.path.exists(site_packages):
+        os.makedirs(site_packages)
+    if site_packages not in sys.path:
+        sys.path.append(site_packages)
+except Exception:
+    pass
+
 
 # ── Token extraction (read-only, no source rewriting) ───────────────────────
 

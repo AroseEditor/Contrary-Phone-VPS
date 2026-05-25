@@ -52,11 +52,38 @@ fun BotEditorScreen(
     var scriptPath by remember { mutableStateOf(existingBot?.scriptPath ?: "") }
     var requirementsPath by remember { mutableStateOf(existingBot?.requirementsPath ?: "") }
     var codeValue by remember { mutableStateOf(TextFieldValue(existingBot?.scriptContent ?: "")) }
-    var terminalExpanded by remember { mutableStateOf(true) }
     var autoRestart by remember { mutableStateOf(existingBot?.autoRestart ?: true) }
     var autoStart by remember { mutableStateOf(existingBot?.autoStart ?: false) }
 
+    var selectedTab by remember { mutableStateOf(0) }
     val currentBotId = remember { existingBot?.id ?: UUID.randomUUID().toString() }
+
+    // Unified Save Function — ensures code is NEVER lost
+    val saveBot = {
+        val id = existingBot?.id ?: currentBotId
+        if (existingBot != null) {
+            botViewModel.updateBot(
+                existingBot.copy(
+                    name = botName.ifBlank { "Bot-${id.take(6)}" },
+                    description = botDescription,
+                    scriptPath = scriptPath,
+                    scriptContent = codeValue.text,
+                    requirementsPath = requirementsPath,
+                    autoRestart = autoRestart,
+                    autoStart = autoStart,
+                ),
+                newToken = if (tokenText.isNotBlank()) tokenText else null,
+            )
+        } else {
+            botViewModel.createBot(
+                name = botName.ifBlank { "Bot-${id.take(6)}" },
+                description = botDescription,
+                token = tokenText,
+                scriptContent = codeValue.text,
+                scriptPath = scriptPath.ifBlank { "/data/data/com.contrary.phonevps/files/$id.py" },
+            )
+        }
+    }
 
     // File pickers
     val scriptPicker = rememberLauncherForActivityResult(
@@ -64,7 +91,6 @@ fun BotEditorScreen(
     ) { uri: Uri? ->
         uri?.let {
             scriptPath = it.toString()
-            // Read file content
             try {
                 val stream = context.contentResolver.openInputStream(it)
                 val content = stream?.bufferedReader()?.readText() ?: ""
@@ -93,183 +119,206 @@ fun BotEditorScreen(
             botName = botName.ifBlank { "New Bot" },
             onBack = onBack,
             onSave = {
-                val id = existingBot?.id ?: currentBotId
-                if (existingBot != null) {
-                    botViewModel.updateBot(
-                        existingBot.copy(
-                            name = botName,
-                            description = botDescription,
-                            scriptPath = scriptPath,
-                            scriptContent = codeValue.text,
-                            requirementsPath = requirementsPath,
-                            autoRestart = autoRestart,
-                            autoStart = autoStart,
-                        ),
-                        newToken = if (tokenText.isNotBlank()) tokenText else null,
-                    )
-                } else {
-                    botViewModel.createBot(
-                        name = botName,
-                        description = botDescription,
-                        token = tokenText,
-                        scriptContent = codeValue.text,
-                        scriptPath = scriptPath,
-                    )
-                }
+                saveBot()
                 onBack()
             },
         )
 
-        // ── Config fields ────────────────────────────────────────────
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .weight(0.3f)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+        // ── Sliding Navigation Tab Row ───────────────────────────────
+        TabRow(
+            selectedTabIndex = selectedTab,
+            containerColor = CardSurface,
+            contentColor = CyberPurpleLight,
+            indicator = { tabPositions ->
+                TabRowDefaults.SecondaryIndicator(
+                    modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                    color = CyberPurple
+                )
+            }
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                EditorField(
-                    value = botName,
-                    onValueChange = { botName = it },
-                    label = "Bot Name",
-                    icon = Icons.Default.SmartToy,
-                    modifier = Modifier.weight(1f),
-                )
-                EditorField(
-                    value = botDescription,
-                    onValueChange = { botDescription = it },
-                    label = "Description",
-                    icon = Icons.Default.Description,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-
-            // Token field
-            OutlinedTextField(
-                value = tokenText,
-                onValueChange = { tokenText = it },
-                label = { Text("Discord Token", fontSize = 11.sp) },
-                leadingIcon = { Icon(Icons.Default.Key, null, modifier = Modifier.size(16.dp)) },
-                trailingIcon = {
-                    IconButton(onClick = { tokenVisible = !tokenVisible }, modifier = Modifier.size(32.dp)) {
-                        Icon(
-                            if (tokenVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                            null, modifier = Modifier.size(16.dp), tint = TerminalGray
-                        )
-                    }
-                },
-                visualTransformation = if (tokenVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                modifier = Modifier.fillMaxWidth(),
-                colors = editorFieldColors(),
-                textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp, fontFamily = FontFamily.Monospace),
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            Tab(
+                selected = selectedTab == 0,
+                onClick = { selectedTab = 0 },
+                text = { Text("Settings", fontSize = 11.sp, fontWeight = FontWeight.Bold) },
+                icon = { Icon(Icons.Default.Settings, null, modifier = Modifier.size(16.dp)) },
+                selectedContentColor = CyberPurpleLight,
+                unselectedContentColor = TerminalGray
             )
-
-            // File selectors
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilePickerField(
-                    label = "Python Script",
-                    value = scriptPath.substringAfterLast('/').ifBlank { "Select .py file" },
-                    icon = Icons.Default.Code,
-                    onClick = { scriptPicker.launch("*/*") },
-                    modifier = Modifier.weight(1f),
-                )
-                FilePickerField(
-                    label = "requirements.txt",
-                    value = requirementsPath.substringAfterLast('/').ifBlank { "Select requirements.txt" },
-                    icon = Icons.Default.List,
-                    onClick = { requirementsPicker.launch("*/*") },
-                    modifier = Modifier.weight(1f),
-                )
-            }
-
-            // Options
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Switch(
-                        checked = autoRestart,
-                        onCheckedChange = { autoRestart = it },
-                        modifier = Modifier.size(36.dp, 20.dp),
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text("Auto restart", color = TerminalGray, fontSize = 11.sp)
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Switch(
-                        checked = autoStart,
-                        onCheckedChange = { autoStart = it },
-                        modifier = Modifier.size(36.dp, 20.dp),
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text("Start on boot", color = TerminalGray, fontSize = 11.sp)
-                }
-            }
+            Tab(
+                selected = selectedTab == 1,
+                onClick = { selectedTab = 1 },
+                text = { Text("Code", fontSize = 11.sp, fontWeight = FontWeight.Bold) },
+                icon = { Icon(Icons.Default.Code, null, modifier = Modifier.size(16.dp)) },
+                selectedContentColor = CyberPurpleLight,
+                unselectedContentColor = TerminalGray
+            )
+            Tab(
+                selected = selectedTab == 2,
+                onClick = { selectedTab = 2 },
+                text = { Text("Console", fontSize = 11.sp, fontWeight = FontWeight.Bold) },
+                icon = { Icon(Icons.Default.PlayArrow, null, modifier = Modifier.size(16.dp)) },
+                selectedContentColor = CyberPurpleLight,
+                unselectedContentColor = TerminalGray
+            )
         }
 
-        HorizontalDivider(color = CyberPurple.copy(0.2f))
-
-        // ── Code editor ──────────────────────────────────────────────
-        Text(
-            text = "  EDITOR",
-            color = NeonCyan,
-            fontSize = 9.sp,
-            fontFamily = FontFamily.Monospace,
-            letterSpacing = 2.sp,
-            modifier = Modifier
-                .background(Color(0xFF0D1117))
-                .padding(horizontal = 16.dp, vertical = 4.dp)
-                .fillMaxWidth(),
-        )
-        CodeEditor(
-            value = codeValue,
-            onValueChange = { codeValue = it },
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth(),
-        )
-
-        // ── Bottom control buttons ───────────────────────────────────
-        EditorBottomBar(
-            botId = currentBotId,
-            isRunning = botViewModel.getRuntimeState(currentBotId).status.isActive(),
-            onRun = {
-                // Save first, then start
-                botViewModel.startBot(currentBotId)
-                terminalViewModel.setActiveBotId(currentBotId)
-            },
-            onStop = {
-                botViewModel.stopBot(currentBotId)
-                terminalViewModel.executeCommand("stop $currentBotId")
-            },
-            onRestart = { botViewModel.restartBot(currentBotId) },
-            onInstallDeps = {
-                if (requirementsPath.isNotBlank()) {
-                    terminalViewModel.executeCommand("pip install -r $requirementsPath")
-                } else {
-                    terminalViewModel.executeCommand("pip list")
-                }
-            },
-        )
-
-        // ── Terminal panel ───────────────────────────────────────────
+        // ── Tab Contents ─────────────────────────────────────────────
         Box(
             modifier = Modifier
+                .weight(1f)
                 .fillMaxWidth()
-                .fillMaxHeight(if (terminalExpanded) 0.35f else 0.06f)
         ) {
-            TerminalPanel(
-                modifier = Modifier.fillMaxSize(),
-                botId = currentBotId,
-                isExpanded = terminalExpanded,
-                onToggleExpand = { terminalExpanded = !terminalExpanded },
-                terminalViewModel = terminalViewModel,
-            )
+            when (selectedTab) {
+                0 -> {
+                    // CONFIG TAB
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            EditorField(
+                                value = botName,
+                                onValueChange = { botName = it },
+                                label = "Bot Name",
+                                icon = Icons.Default.SmartToy,
+                                modifier = Modifier.weight(1f),
+                            )
+                            EditorField(
+                                value = botDescription,
+                                onValueChange = { botDescription = it },
+                                label = "Description",
+                                icon = Icons.Default.Description,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+
+                        // Token field
+                        OutlinedTextField(
+                            value = tokenText,
+                            onValueChange = { tokenText = it },
+                            label = { Text("Discord Token", fontSize = 11.sp) },
+                            leadingIcon = { Icon(Icons.Default.Key, null, modifier = Modifier.size(16.dp)) },
+                            trailingIcon = {
+                                IconButton(onClick = { tokenVisible = !tokenVisible }, modifier = Modifier.size(32.dp)) {
+                                    Icon(
+                                        if (tokenVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                        null, modifier = Modifier.size(16.dp), tint = TerminalGray
+                                    )
+                                }
+                            },
+                            visualTransformation = if (tokenVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = editorFieldColors(),
+                            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp, fontFamily = FontFamily.Monospace),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        )
+
+                        // File selectors
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FilePickerField(
+                                label = "Python Script",
+                                value = scriptPath.substringAfterLast('/').ifBlank { "Select .py file" },
+                                icon = Icons.Default.Code,
+                                onClick = { scriptPicker.launch("*/*") },
+                                modifier = Modifier.weight(1f),
+                            )
+                            FilePickerField(
+                                label = "requirements.txt",
+                                value = requirementsPath.substringAfterLast('/').ifBlank { "Select requirements.txt" },
+                                icon = Icons.Default.List,
+                                onClick = { requirementsPicker.launch("*/*") },
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+
+                        // Options
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Switch(
+                                    checked = autoRestart,
+                                    onCheckedChange = { autoRestart = it },
+                                    modifier = Modifier.size(36.dp, 20.dp),
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text("Auto restart", color = TerminalGray, fontSize = 11.sp)
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Switch(
+                                    checked = autoStart,
+                                    onCheckedChange = { autoStart = it },
+                                    modifier = Modifier.size(36.dp, 20.dp),
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text("Start on boot", color = TerminalGray, fontSize = 11.sp)
+                            }
+                        }
+                    }
+                }
+                1 -> {
+                    // CODE EDITOR TAB
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        Text(
+                            text = "  CODE EDITOR (AUTOSAVES ON RUN)",
+                            color = NeonCyan,
+                            fontSize = 8.sp,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 1.5.sp,
+                            modifier = Modifier
+                                .background(Color(0xFF0D1117))
+                                .padding(horizontal = 16.dp, vertical = 6.dp)
+                                .fillMaxWidth(),
+                        )
+                        CodeEditor(
+                            value = codeValue,
+                            onValueChange = { codeValue = it },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+                }
+                2 -> {
+                    // CONSOLE & TERMINAL TAB
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        EditorBottomBar(
+                            botId = currentBotId,
+                            isRunning = botViewModel.getRuntimeState(currentBotId).status.isActive(),
+                            onRun = {
+                                saveBot()
+                                botViewModel.startBot(currentBotId)
+                                terminalViewModel.setActiveBotId(currentBotId)
+                            },
+                            onStop = {
+                                botViewModel.stopBot(currentBotId)
+                                terminalViewModel.executeCommand("stop $currentBotId")
+                            },
+                            onRestart = { botViewModel.restartBot(currentBotId) },
+                            onInstallDeps = {
+                                if (requirementsPath.isNotBlank()) {
+                                    terminalViewModel.executeCommand("pip install -r $requirementsPath")
+                                } else {
+                                    terminalViewModel.executeCommand("pip list")
+                                }
+                            },
+                        )
+                        HorizontalDivider(color = CyberPurple.copy(0.2f))
+                        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                            TerminalPanel(
+                                modifier = Modifier.fillMaxSize(),
+                                botId = currentBotId,
+                                isExpanded = true,
+                                onToggleExpand = {},
+                                terminalViewModel = terminalViewModel,
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }

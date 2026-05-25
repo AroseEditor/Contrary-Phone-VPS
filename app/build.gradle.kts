@@ -42,6 +42,7 @@ android {
             pip {
                 install("discord.py")
                 install("aiohttp")
+                install("requests")
             }
         }
         sourceSets {

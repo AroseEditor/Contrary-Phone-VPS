@@ -35,8 +35,8 @@ fun DashboardScreen(
     terminalViewModel: TerminalViewModel = hiltViewModel(),
 ) {
     val uiState by botViewModel.uiState.collectAsState()
-    var sidebarExpanded by remember { mutableStateOf(true) }
-    var terminalExpanded by remember { mutableStateOf(true) }
+    var sidebarExpanded by remember { mutableStateOf(false) }
+    var terminalExpanded by remember { mutableStateOf(false) }
     var terminalHeightFraction by remember { mutableStateOf(0.35f) }
 
     val sidebarWidth by animateDpAsState(

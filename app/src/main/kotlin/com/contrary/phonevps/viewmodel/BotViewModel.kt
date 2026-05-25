@@ -103,20 +103,25 @@ class BotViewModel @Inject constructor(
     }
 
     fun startBot(botId: String) {
-        // Validate script first
-        val bot = _uiState.value.bots.find { it.id == botId } ?: return
-        if (bot.scriptContent.isNotBlank()) {
-            val validation = ScriptValidator.validate(bot.scriptContent)
-            if (!validation.isValid) {
-                _uiState.update { it.copy(error = validation.errors.joinToString("\n")) }
-                return
+        viewModelScope.launch {
+            // Validate script first by loading freshest config directly from DB
+            val bot = botRepository.getBotById(botId) ?: run {
+                _uiState.update { it.copy(error = "Bot configuration not found. Please save first.") }
+                return@launch
             }
+            if (bot.scriptContent.isNotBlank()) {
+                val validation = ScriptValidator.validate(bot.scriptContent)
+                if (!validation.isValid) {
+                    _uiState.update { it.copy(error = validation.errors.joinToString("\n")) }
+                    return@launch
+                }
+            }
+            val intent = Intent(context, BotForegroundService::class.java).apply {
+                action = BotForegroundService.ACTION_START_BOT
+                putExtra(BotForegroundService.EXTRA_BOT_ID, botId)
+            }
+            context.startForegroundService(intent)
         }
-        val intent = Intent(context, BotForegroundService::class.java).apply {
-            action = BotForegroundService.ACTION_START_BOT
-            putExtra(BotForegroundService.EXTRA_BOT_ID, botId)
-        }
-        context.startForegroundService(intent)
     }
 
     fun stopBot(botId: String) {
