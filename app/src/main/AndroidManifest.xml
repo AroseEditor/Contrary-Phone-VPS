@@ -67,12 +67,14 @@
             android:foregroundServiceType="dataSync"
             android:stopWithTask="false" />
 
-        <!-- Floating Overlay Service -->
+        <!-- Floating Overlay Service (stub — full implementation in next release) -->
+        <!-- Uncomment when FloatingOverlayService class is implemented:
         <service
             android:name=".ui.overlay.FloatingOverlayService"
             android:enabled="true"
             android:exported="false"
             android:permission="android.permission.SYSTEM_ALERT_WINDOW" />
+        -->
 
         <!-- Boot receiver -->
         <receiver
