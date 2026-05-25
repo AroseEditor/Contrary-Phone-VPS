@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.contrary.phonevps.ui.logs.TerminalPanel
 import com.contrary.phonevps.ui.theme.*
+import kotlinx.coroutines.launch
 import com.contrary.phonevps.viewmodel.BotViewModel
 import com.contrary.phonevps.viewmodel.TerminalViewModel
 import java.util.UUID
@@ -37,6 +38,7 @@ fun BotEditorScreen(
     botId: String?,
     onBack: () -> Unit,
     botViewModel: BotViewModel = hiltViewModel(),
+    terminalViewModel: TerminalViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -51,6 +53,7 @@ fun BotEditorScreen(
     var autoRestart by remember { mutableStateOf(true) }
     var autoStart by remember { mutableStateOf(false) }
 
+    var selectedTab by remember { mutableStateOf(0) }
     val currentBotId = remember(botId) { botId ?: UUID.randomUUID().toString() }
 
     // Load data asynchronously from Room
