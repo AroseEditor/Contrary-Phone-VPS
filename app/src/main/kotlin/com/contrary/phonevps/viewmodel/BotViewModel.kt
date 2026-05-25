@@ -59,14 +59,14 @@ class BotViewModel @Inject constructor(
         _uiState.update { it.copy(selectedBotId = botId) }
     }
 
-    fun createBot(
+    suspend fun createBot(
+        id: String,
         name: String,
         description: String,
         token: String,
         scriptContent: String,
         scriptPath: String,
-    ): String {
-        val id = UUID.randomUUID().toString()
+    ) {
         val bot = BotConfig(
             id = id,
             name = name.ifBlank { "Bot-${id.take(6)}" },
@@ -76,20 +76,15 @@ class BotViewModel @Inject constructor(
             scriptContent = scriptContent,
             updatedAt = System.currentTimeMillis(),
         )
-        viewModelScope.launch {
-            if (token.isNotBlank()) botRepository.storeToken(id, token)
-            botRepository.saveBot(bot)
-        }
-        return id
+        if (token.isNotBlank()) botRepository.storeToken(id, token)
+        botRepository.saveBot(bot)
     }
 
-    fun updateBot(bot: BotConfig, newToken: String? = null) {
-        viewModelScope.launch {
-            if (newToken != null && newToken.isNotBlank()) {
-                botRepository.storeToken(bot.id, newToken)
-            }
-            botRepository.saveBot(bot.copy(updatedAt = System.currentTimeMillis()))
+    suspend fun updateBot(bot: BotConfig, newToken: String? = null) {
+        if (newToken != null && newToken.isNotBlank()) {
+            botRepository.storeToken(bot.id, newToken)
         }
+        botRepository.saveBot(bot.copy(updatedAt = System.currentTimeMillis()))
     }
 
     fun deleteBot(botId: String) {
@@ -149,4 +144,6 @@ class BotViewModel @Inject constructor(
 
     fun getLogsForBot(botId: String): Flow<List<LogEntry>> =
         botRepository.getLogsForBot(botId)
+
+    suspend fun getBotById(botId: String): BotConfig? = botRepository.getBotById(botId)
 }

@@ -37,37 +37,53 @@ fun BotEditorScreen(
     botId: String?,
     onBack: () -> Unit,
     botViewModel: BotViewModel = hiltViewModel(),
-    terminalViewModel: TerminalViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
-    val existingBot = remember(botId) {
+    val scope = rememberCoroutineScope()
+
+    var botName by remember { mutableStateOf("") }
+    var botDescription by remember { mutableStateOf("") }
+    var tokenText by remember { mutableStateOf("") }
+    var tokenVisible by remember { mutableStateOf(false) }
+    var scriptPath by remember { mutableStateOf("") }
+    var requirementsPath by remember { mutableStateOf("") }
+    var codeValue by remember { mutableStateOf(TextFieldValue("")) }
+    var autoRestart by remember { mutableStateOf(true) }
+    var autoStart by remember { mutableStateOf(false) }
+
+    val currentBotId = remember(botId) { botId ?: UUID.randomUUID().toString() }
+
+    // Load data asynchronously from Room
+    LaunchedEffect(botId) {
+        if (botId != null) {
+            val bot = botViewModel.getBotById(botId)
+            if (bot != null) {
+                botName = bot.name
+                botDescription = bot.description
+                scriptPath = bot.scriptPath
+                requirementsPath = bot.requirementsPath
+                codeValue = TextFieldValue(bot.scriptContent)
+                autoRestart = bot.autoRestart
+                autoStart = bot.autoStart
+                tokenText = botViewModel.getToken(botId) ?: ""
+            }
+        }
+    }
+
+    val existingBot = remember(botId, botViewModel.uiState.collectAsState().value.bots) {
         botId?.let { botViewModel.uiState.value.bots.find { b -> b.id == it } }
     }
 
-    var botName by remember { mutableStateOf(existingBot?.name ?: "") }
-    var botDescription by remember { mutableStateOf(existingBot?.description ?: "") }
-    var tokenText by remember { mutableStateOf(
-        existingBot?.let { botViewModel.getToken(it.id) } ?: ""
-    )}
-    var tokenVisible by remember { mutableStateOf(false) }
-    var scriptPath by remember { mutableStateOf(existingBot?.scriptPath ?: "") }
-    var requirementsPath by remember { mutableStateOf(existingBot?.requirementsPath ?: "") }
-    var codeValue by remember { mutableStateOf(TextFieldValue(existingBot?.scriptContent ?: "")) }
-    var autoRestart by remember { mutableStateOf(existingBot?.autoRestart ?: true) }
-    var autoStart by remember { mutableStateOf(existingBot?.autoStart ?: false) }
-
-    var selectedTab by remember { mutableStateOf(0) }
-    val currentBotId = remember { existingBot?.id ?: UUID.randomUUID().toString() }
-
     // Unified Save Function — ensures code is NEVER lost
-    val saveBot = {
-        val id = existingBot?.id ?: currentBotId
+    val saveBot: suspend () -> Unit = {
+        val id = currentBotId
+        val finalScriptPath = scriptPath.ifBlank { "${context.filesDir.absolutePath}/bots/${id}.py" }
         if (existingBot != null) {
             botViewModel.updateBot(
                 existingBot.copy(
                     name = botName.ifBlank { "Bot-${id.take(6)}" },
                     description = botDescription,
-                    scriptPath = scriptPath,
+                    scriptPath = finalScriptPath,
                     scriptContent = codeValue.text,
                     requirementsPath = requirementsPath,
                     autoRestart = autoRestart,
@@ -77,26 +93,33 @@ fun BotEditorScreen(
             )
         } else {
             botViewModel.createBot(
+                id = id,
                 name = botName.ifBlank { "Bot-${id.take(6)}" },
                 description = botDescription,
                 token = tokenText,
                 scriptContent = codeValue.text,
-                scriptPath = scriptPath.ifBlank { "/data/data/com.contrary.phonevps/files/$id.py" },
+                scriptPath = finalScriptPath,
             )
         }
     }
 
-    // File pickers
+    // File pickers (always write/copy to standard filesystem path)
     val scriptPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            scriptPath = it.toString()
+            val localPath = "${context.filesDir.absolutePath}/bots/${currentBotId}.py"
+            scriptPath = localPath
             try {
                 val stream = context.contentResolver.openInputStream(it)
                 val content = stream?.bufferedReader()?.readText() ?: ""
                 codeValue = TextFieldValue(content)
                 stream?.close()
+                // Proactively save copy to filesystem
+                java.io.File(localPath).apply {
+                    parentFile?.mkdirs()
+                    writeText(content)
+                }
             } catch (e: Exception) {
                 terminalViewModel.executeCommand("echo Error reading file: ${e.message}")
             }
@@ -106,7 +129,21 @@ fun BotEditorScreen(
     val requirementsPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let { requirementsPath = it.toString() }
+        uri?.let {
+            val localPath = "${context.filesDir.absolutePath}/bots/${currentBotId}_requirements.txt"
+            try {
+                val stream = context.contentResolver.openInputStream(it)
+                val content = stream?.bufferedReader()?.readText() ?: ""
+                stream?.close()
+                java.io.File(localPath).apply {
+                    parentFile?.mkdirs()
+                    writeText(content)
+                }
+                requirementsPath = localPath
+            } catch (e: Exception) {
+                terminalViewModel.executeCommand("echo Error reading requirements: ${e.message}")
+            }
+        }
     }
 
     Column(
@@ -120,8 +157,10 @@ fun BotEditorScreen(
             botName = botName.ifBlank { "New Bot" },
             onBack = onBack,
             onSave = {
-                saveBot()
-                onBack()
+                scope.launch {
+                    saveBot()
+                    onBack()
+                }
             },
         )
 
@@ -290,9 +329,11 @@ fun BotEditorScreen(
                             botId = currentBotId,
                             isRunning = botViewModel.getRuntimeState(currentBotId).status.isActive(),
                             onRun = {
-                                saveBot()
-                                botViewModel.startBot(currentBotId)
-                                terminalViewModel.setActiveBotId(currentBotId)
+                                scope.launch {
+                                    saveBot()
+                                    botViewModel.startBot(currentBotId)
+                                    terminalViewModel.setActiveBotId(currentBotId)
+                                }
                             },
                             onStop = {
                                 botViewModel.stopBot(currentBotId)

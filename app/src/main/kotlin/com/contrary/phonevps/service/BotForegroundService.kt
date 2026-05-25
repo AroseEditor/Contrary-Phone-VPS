@@ -116,6 +116,19 @@ class BotForegroundService : Service() {
         wakeLockManager.acquire()
         startTimes[botId] = System.currentTimeMillis()
 
+        // Write script content to filesystem before running
+        try {
+            val file = java.io.File(bot.scriptPath)
+            file.parentFile?.mkdirs()
+            file.writeText(bot.scriptContent)
+            Timber.d("Wrote script content to ${bot.scriptPath}")
+        } catch (e: Exception) {
+            Timber.e(e, "Failed to write script to ${bot.scriptPath}")
+            log(botId, LogLevel.ERROR, "Failed to write script file: ${e.message}")
+            updateState(botId, BotRuntimeState(botId, BotStatus.ERROR, lastError = "Write error: ${e.message}"))
+            return
+        }
+
         try {
             val callback = { level: String, message: String ->
                 val logLevel = when (level) {
