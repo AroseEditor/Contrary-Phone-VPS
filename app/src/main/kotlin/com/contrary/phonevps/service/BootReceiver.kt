@@ -18,10 +18,10 @@ class BootReceiver : BroadcastReceiver() {
     lateinit var botRepository: BotRepository
 
     override fun onReceive(context: Context, intent: Intent) {
-        val action = intent.action ?: return
-        if (action != Intent.ACTION_BOOT_COMPLETED &&
-            action != "android.intent.action.QUICKBOOT_POWERON" &&
-            action != "com.htc.intent.action.QUICKBOOT_POWERON"
+        val bootAction = intent.action ?: return
+        if (bootAction != Intent.ACTION_BOOT_COMPLETED &&
+            bootAction != "android.intent.action.QUICKBOOT_POWERON" &&
+            bootAction != "com.htc.intent.action.QUICKBOOT_POWERON"
         ) return
 
         Timber.d("Boot completed — checking auto-start bots")

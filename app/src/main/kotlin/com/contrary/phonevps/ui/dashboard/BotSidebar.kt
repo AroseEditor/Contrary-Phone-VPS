@@ -284,7 +284,7 @@ private fun MiniUsageBar(
 }
 
 @Composable
-private fun EmptyBotsPlaceholder(onCreateBot: () -> Unit) {
+private fun ColumnScope.EmptyBotsPlaceholder(onCreateBot: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()

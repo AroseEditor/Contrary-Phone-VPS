@@ -117,25 +117,17 @@ class BotForegroundService : Service() {
         startTimes[botId] = System.currentTimeMillis()
 
         try {
-            // Create log callback — Python calls this for every line
-            val logCallback = pythonBridge.getPython().getBuiltins()
-                .callAttr("type", "LogCallback", pythonBridge.getPython().getBuiltins().callAttr("tuple"),
-                    pythonBridge.getPython().getBuiltins().callAttr("dict"))
-
-            // Use a lambda-compatible interface via Chaquopy
-            val callback = object : com.chaquo.python.PyObject.Subclass() {
-                @Suppress("unused")
-                fun __call__(level: String, message: String) {
-                    val logLevel = when (level) {
-                        "STDOUT" -> LogLevel.STDOUT
-                        "STDERR" -> LogLevel.STDERR
-                        "ERROR" -> LogLevel.ERROR
-                        "WARN" -> LogLevel.WARN
-                        "SYSTEM" -> LogLevel.SYSTEM
-                        else -> LogLevel.INFO
-                    }
-                    serviceScope.launch { log(botId, logLevel, message) }
+            val callback = { level: String, message: String ->
+                val logLevel = when (level) {
+                    "STDOUT" -> LogLevel.STDOUT
+                    "STDERR" -> LogLevel.STDERR
+                    "ERROR" -> LogLevel.ERROR
+                    "WARN" -> LogLevel.WARN
+                    "SYSTEM" -> LogLevel.SYSTEM
+                    else -> LogLevel.INFO
                 }
+                serviceScope.launch { log(botId, logLevel, message) }
+                Unit
             }
 
             val started = botRunnerModule.callAttr(

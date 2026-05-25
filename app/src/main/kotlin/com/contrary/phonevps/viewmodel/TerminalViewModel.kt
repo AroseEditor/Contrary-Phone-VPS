@@ -244,7 +244,7 @@ class TerminalViewModel @Inject constructor(
             return
         }
         states.entries.forEach { (id, state) ->
-            val target = if (botId != null && id != botId) return@forEach
+            if (botId != null && id != botId) return@forEach
             emit("Bot: $id", TerminalLineType.SYSTEM)
             emit("  Status: ${state.status.displayName()}", TerminalLineType.OUTPUT)
             emit("  Uptime: ${formatUptime(state.uptimeSeconds)}", TerminalLineType.OUTPUT)
